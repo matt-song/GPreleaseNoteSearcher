@@ -1,8 +1,8 @@
 #### Status
-[] Step#1: get the list of url
-[] Step#2: parse the url 
-[] Step#3: store the content to DB 
-[] Step#4: web page
+[ ] Step#1: get the list of url
+[ ] Step#2: parse the url 
+[ ] Step#3: store the content to DB 
+[ ] Step#4: web page
 
 ## Step#1 get the latest version
 - latest 4: https://gpdb.docs.pivotal.io/43latest/main/index.html
