@@ -6,10 +6,12 @@ Steps:
 1. get the version list from the latest lin, put them into a map
 2. get content of each of link, generate the data for tables
 
+to be done: only get uniuq value of g
 */
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,7 +22,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/pborman/getopt/v2"
-	"golang.org/x/net/html"
 )
 
 var (
@@ -51,12 +52,86 @@ func main() {
 
 	var allGPVerMap map[string][]string
 	allGPVerMap = getReleaseNoteList(latestRelaseURLs)
-	for k := range allGPVerMap {
-		fmt.Printf("key[%s] value[%s]\n", k, allGPVerMap[k])
+	for targetGpFamily := range allGPVerMap {
+		// fmt.Printf("key[%s] value[%s]\n", targetGpFamily, allGPVerMap[targetGpFamily])
+		switch targetGpFamily {
+		/* for 4x, the release note url is like:
+		https://gpdb.docs.pivotal.io/43latest/relnotes/GPDB_43latest_README.html
+		https://gpdb.docs.pivotal.io/43310/relnotes/GPDB_43latest_README.html
+		*/
+		case "4":
+			for _, gp4xVer := range allGPVerMap[targetGpFamily] {
+				relNoteURL := "https://gpdb.docs.pivotal.io/" + gp4xVer + "/relnotes/GPDB_43latest_README.html"
+				plog("DEBUG", "find release note url: "+relNoteURL)
+				parseURL4x(relNoteURL)
+			}
+		case "5":
+
+		case "6":
+		}
+
 	}
+
+}
+
+func parseURL4x(url string) {
+
+	allResolvedIssueMap := make(map[string]map[string]string)
+
+	plog("DEBUG", "Reading content from url:"+url)
+
+	// Get the full content of the page
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Print("Done, Processing the content...")
+	}
+	defer resp.Body.Close()
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var curIssueID string
+	// find out all div with class = tablenoborder
+	doc.Find("div.tablenoborder").Each(func(i int, allDiv *goquery.Selection) {
+
+		// find out all element within the div with id = topic20__, this is the id for resolved issue
+		allDiv.Find("[id^=topic20__]").Each(func(j int, allStuffHaveID *goquery.Selection) {
+
+			// find out all td within the div, that what we need
+			allStuffHaveID.Find("td.entry").Each(func(id int, allTd *goquery.Selection) {
+				hash := make(map[string]string)
+				targetColumnNo := id % 4
+				if targetColumnNo == 0 {
+
+					curIssueID = allTd.Text()
+					plog("ERROR", "Find Issue ID: "+curIssueID)
+					// allResolvedIssueMap["curIssueID"] = ""
+				} else {
+					switch targetColumnNo {
+					case 1:
+						hash["category"] = allTd.Text()
+						allResolvedIssueMap[curIssueID] = hash
+					case 2:
+						hash["resolved"] = allTd.Text()
+						allResolvedIssueMap[curIssueID] = hash
+					case 3:
+						hash["description"] = allTd.Text()
+						allResolvedIssueMap[curIssueID] = hash
+					}
+				}
+			})
+		})
+	})
+
+	b, _ := json.MarshalIndent(allResolvedIssueMap, "", "  ")
+	plog("DEBUG", string(b))
 }
 
 // get the content of url like curl in linux
+/*
 func parseURL(url string) {
 
 	plog("DEBUG", "Parsing url ["+url+"]")
@@ -77,6 +152,7 @@ func parseURL(url string) {
 	}
 	f(doc)
 }
+*/
 
 func getReleaseNoteList(latestURLs []string) (m map[string][]string) {
 
@@ -89,7 +165,7 @@ func getReleaseNoteList(latestURLs []string) (m map[string][]string) {
 
 		// get the GPDB family
 		gpFamily := strings.Split(url, "/")[3]
-		plog("INFO", "Checking the GP version list within "+gpFamily+"based on url: "+url)
+		plog("INFO", "Checking the GP version list based on url: "+url)
 		resp, err := http.Get(url)
 		if err != nil {
 			log.Fatal(err)
