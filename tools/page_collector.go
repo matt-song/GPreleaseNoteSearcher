@@ -3,7 +3,7 @@ Author: Matt Song (matt.song@live.cn)
 Date:   Aug 31st, 2020
 
 Steps:
-1. get the version list from the latest lin, put them into a map
+1. get the version list from the latest link (v4,v5,v6)
 2. get content of each of link, generate the data for tables
 
 to be done: only get uniuq value of g
